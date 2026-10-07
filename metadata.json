@@ -1,0 +1,6 @@
+{
+  "name": "AITR Transit - Real-Time College Bus Tracking & ETA System",
+  "description": "Real-time college bus tracking and ETA prediction system for Acropolis Institute of Technology & Research (AITR), Indore, featuring live GPS, route progression, stop search, and driver/admin controls.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @keyframes bounceShort {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .animate-bounce-short {
+    animation: bounceShort 1.5s ease-in-out infinite;
+  }
+}
+
+/* Ensure Leaflet controls work seamlessly with modern rounded cards */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 10;
+}
