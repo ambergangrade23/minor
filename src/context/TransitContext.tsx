@@ -43,34 +43,50 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
   const refreshData = useCallback(async () => {
     try {
       const [routesRes, busesRes, metricsRes, notifsRes] = await Promise.all([
-        fetch('/api/routes').then((r) => r.json()),
-        fetch('/api/buses').then((r) => r.json()),
-        fetch('/api/admin/metrics').then((r) => r.json()),
-        fetch('/api/notifications').then((r) => r.json()),
+        fetch('/api/routes')
+          .then((r) => (r.ok ? r.json() : { success: false }))
+          .catch(() => ({ success: false })),
+        fetch('/api/buses')
+          .then((r) => (r.ok ? r.json() : { success: false }))
+          .catch(() => ({ success: false })),
+        fetch('/api/admin/metrics')
+          .then((r) => (r.ok ? r.json() : { success: false }))
+          .catch(() => ({ success: false })),
+        fetch('/api/notifications')
+          .then((r) => (r.ok ? r.json() : { success: false }))
+          .catch(() => ({ success: false })),
       ]);
 
-      if (routesRes.success) setRoutes(routesRes.routes);
-      if (busesRes.success) {
+      if (routesRes && routesRes.success) setRoutes(routesRes.routes);
+      if (busesRes && busesRes.success) {
         setBuses(busesRes.buses);
         // Default select G55 if nothing active
         if (!activeBus) {
           const g55 = busesRes.buses.find((b: Bus) => b.bus_number === 'G55') || busesRes.buses[0];
           if (g55) {
             setActiveBus(g55);
-            const foundRoute = routesRes.routes?.find((r: Route) => r.id === g55.route_id);
+            const foundRoute = routesRes?.routes?.find((r: Route) => r.id === g55.route_id);
             if (foundRoute) setActiveRoute(foundRoute);
           }
         }
       }
-      if (metricsRes.success) setMetrics(metricsRes.metrics);
-      if (notifsRes.success) setNotifications(notifsRes.notifications);
+      if (metricsRes && metricsRes.success) setMetrics(metricsRes.metrics);
+      if (notifsRes && notifsRes.success) setNotifications(notifsRes.notifications);
     } catch (err) {
-      console.error('Error fetching transit data:', err);
+      console.warn('Transit data refresh warning:', err);
     }
   }, [activeBus]);
 
   useEffect(() => {
     refreshData();
+  }, [refreshData]);
+
+  // Periodic polling fallback when WebSocket is idle or disconnected
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshData();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [refreshData]);
 
   // WebSocket for Live GPS and Events
@@ -81,39 +97,59 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
     let reconnectTimeout: NodeJS.Timeout;
 
     function connect() {
-      socket = new WebSocket(wsUrl);
+      try {
+        socket = new WebSocket(wsUrl);
 
-      socket.onopen = () => {
-        setWsConnected(true);
-      };
+        socket.onopen = () => {
+          setWsConnected(true);
+        };
 
-      socket.onclose = () => {
-        setWsConnected(false);
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
+        socket.onclose = () => {
+          setWsConnected(false);
+          reconnectTimeout = setTimeout(connect, 4000);
+        };
 
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'gps:update') {
-            const { bus, location } = data.payload;
-            setBuses((prev) =>
-              prev.map((b) =>
-                b.id === bus.id ? { ...b, latest_gps: location, status: bus.status, current_stop_name: bus.current_stop_name, next_stop_name: bus.next_stop_name } : b
-              )
-            );
-            setActiveBus((current) => (current && current.id === bus.id ? { ...current, latest_gps: location, status: bus.status } : current));
-          } else if (data.type === 'notification:new') {
-            setNotifications((prev) => [data.payload, ...prev]);
-          } else if (data.type === 'metrics:update') {
-            setMetrics(data.payload);
-          } else if (data.type === 'simulation:status') {
-            setSimulating(data.payload.active);
+        socket.onerror = () => {
+          setWsConnected(false);
+          socket?.close();
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'gps:update') {
+              const { bus, location } = data.payload;
+              setBuses((prev) =>
+                prev.map((b) =>
+                  b.id === bus.id
+                    ? {
+                        ...b,
+                        latest_gps: location,
+                        status: bus.status,
+                        current_stop_name: bus.current_stop_name,
+                        next_stop_name: bus.next_stop_name,
+                      }
+                    : b
+                )
+              );
+              setActiveBus((current) =>
+                current && current.id === bus.id ? { ...current, latest_gps: location, status: bus.status } : current
+              );
+            } else if (data.type === 'notification:new') {
+              setNotifications((prev) => [data.payload, ...prev]);
+            } else if (data.type === 'metrics:update') {
+              setMetrics(data.payload);
+            } else if (data.type === 'simulation:status') {
+              setSimulating(data.payload.active);
+            }
+          } catch (e) {
+            console.warn('WS Message Parse Notice:', e);
           }
-        } catch (e) {
-          console.error('WS Parse Error', e);
-        }
-      };
+        };
+      } catch (wsErr) {
+        console.warn('WebSocket connection not available:', wsErr);
+        setWsConnected(false);
+      }
     }
 
     connect();
@@ -133,13 +169,13 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     let isMounted = true;
     fetch(`/api/buses/${activeBus.id}/eta?stopId=${selectedStopId}&shift=${shift}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : { success: false }))
       .then((data) => {
         if (isMounted && data.success) {
           setCurrentETA(data.eta);
         }
       })
-      .catch((err) => console.error('ETA fetch error:', err));
+      .catch((err) => console.warn('ETA fetch notice:', err));
 
     return () => {
       isMounted = false;
