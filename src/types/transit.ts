@@ -74,6 +74,10 @@ export interface Bus {
   driver_id?: string;
   driver_name?: string;
   driver_phone?: string;
+  driver_phone_verified?: boolean;
+  assignment_status?: 'REGULAR' | 'CONFIRMED_REPLACEMENT' | 'REPLACED_TEMPORARILY' | 'MAINTENANCE';
+  last_updated_at?: string;
+  pickup_areas?: string[];
   status: BusStatus;
   active: boolean;
   data_quality: 'verified' | 'needs_verification';
@@ -87,6 +91,63 @@ export interface Bus {
   distance_to_next_km?: number;
   eta_to_next_min?: number;
   is_simulated?: boolean;
+  active_replacement_id?: string;
+}
+
+export type AlternativeMatchType = 'EXACT_STOP' | 'NEARBY_STOP' | 'CONFIRMED_REPLACEMENT' | 'PREDICTED_CORRIDOR';
+
+export interface AlternativeBusCandidate {
+  bus: Bus;
+  route: Route;
+  match_type: AlternativeMatchType;
+  stop_name: string;
+  stop_id: string;
+  distance_meters: number;
+  walking_time_minutes: number;
+  shift_time: string | null;
+  driver_name: string;
+  driver_phone: string | null;
+  is_verified_driver_phone: boolean;
+  route_similarity_score: number; // 0 - 100%
+  corridor_name?: string;
+  is_confirmed_replacement: boolean;
+  replacement_reason?: string;
+  effective_shift?: string;
+  timing_compatibility: 'optimal' | 'moderate' | 'unverified';
+  notes?: string;
+}
+
+export interface BusChangeNotification {
+  id: string;
+  regular_bus_id: string;
+  regular_bus_number: string;
+  replacement_bus_id: string;
+  replacement_bus_number: string;
+  effective_date: string;
+  shift: ShiftType | 'both';
+  affected_stops: string[];
+  reason: string;
+  published_by: string;
+  published_at: string;
+  status: 'PUBLISHED' | 'CANCELLED';
+  replacement_driver_name?: string;
+  replacement_driver_phone?: string;
+  is_verified_driver_phone?: boolean;
+  pickup_schedule?: Record<string, string>;
+}
+
+export interface AreaAlternativeHub {
+  id: string;
+  name: string;
+  normalized_name: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+  description: string;
+  routesServing: Array<{ route_id: string; route_name: string; group_number: number }>;
+  regularBuses: Bus[];
+  predictedAlternatives: Array<{ bus: Bus; route_name: string; similarity: number; reason: string }>;
+  confirmedReplacements: BusChangeNotification[];
 }
 
 export interface Trip {
@@ -142,10 +203,11 @@ export interface TransitNotification {
   bus_number: string;
   stop_id: string;
   stop_name: string;
-  type: 'APPROACHING' | 'ARRIVED' | 'DELAY' | 'GPS_RESTORED' | 'GPS_LOST';
+  type: 'APPROACHING' | 'ARRIVED' | 'DELAY' | 'GPS_RESTORED' | 'GPS_LOST' | 'BUS_REPLACEMENT';
   message: string;
   created_at: string;
   read: boolean;
+  replacement?: BusChangeNotification;
 }
 
 export interface AdminMetrics {

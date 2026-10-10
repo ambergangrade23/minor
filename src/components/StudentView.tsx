@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useTransit } from '../context/TransitContext';
 import { LeafletMap } from './LeafletMap';
 import { RouteScheduleModal } from './RouteScheduleModal';
+import { NearbyAlternativesModal } from './NearbyAlternativesModal';
+import { ProblemAreasDirectoryModal } from './ProblemAreasDirectoryModal';
 import { Bus, Route } from '../types/transit';
 import {
   Search,
@@ -10,6 +12,14 @@ import {
   Bus as BusIcon,
   ChevronRight,
   Calendar,
+  Navigation,
+  Compass,
+  AlertTriangle,
+  Phone,
+  ShieldCheck,
+  CheckCircle2,
+  ArrowRight,
+  Info,
 } from 'lucide-react';
 
 export const StudentView: React.FC = () => {
@@ -26,10 +36,20 @@ export const StudentView: React.FC = () => {
     shift,
     setShift,
     notifications,
+    replacements,
   } = useTransit();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState<boolean>(false);
+  const [isAlternativesModalOpen, setIsAlternativesModalOpen] = useState<boolean>(false);
+  const [isProblemAreasModalOpen, setIsProblemAreasModalOpen] = useState<boolean>(false);
+  const [targetAlternativeStop, setTargetAlternativeStop] = useState<string>('');
+
+  // Selected stop object
+  const selectedStop = useMemo(() => {
+    if (!selectedStopId || !activeRoute) return null;
+    return activeRoute.stops.find((s) => s.stop_id === selectedStopId) || null;
+  }, [selectedStopId, activeRoute]);
 
   // Search Results across all stops in master database
   const searchResults = useMemo(() => {
@@ -77,6 +97,29 @@ export const StudentView: React.FC = () => {
     return buses.filter((b) => b.status === 'ACTIVE' || b.status === 'APPROACHING');
   }, [buses]);
 
+  // Check for Confirmed Replacement Announcement for currently active bus
+  const activeReplacementForCurrentBus = useMemo(() => {
+    if (!activeBus) return null;
+    return replacements.find(
+      (r) =>
+        r.status === 'PUBLISHED' &&
+        (r.regular_bus_id === activeBus.id || r.regular_bus_number === activeBus.bus_number) &&
+        (r.shift === 'both' || r.shift === shift)
+    );
+  }, [activeBus, replacements, shift]);
+
+  // Check for Confirmed Replacement Announcement for currently selected stop
+  const activeReplacementForCurrentStop = useMemo(() => {
+    if (!selectedStop) return null;
+    const stopNameLower = selectedStop.stop_name.toLowerCase();
+    return replacements.find(
+      (r) =>
+        r.status === 'PUBLISHED' &&
+        r.affected_stops.some((s) => s.toLowerCase().includes(stopNameLower) || stopNameLower.includes(s.toLowerCase())) &&
+        (r.shift === 'both' || r.shift === shift)
+    );
+  }, [selectedStop, replacements, shift]);
+
   // Approaching alerts for selected stop
   const approachingAlert = useMemo(() => {
     if (!selectedStopId) return null;
@@ -84,6 +127,20 @@ export const StudentView: React.FC = () => {
       (n) => n.stop_id === selectedStopId && (n.type === 'APPROACHING' || n.type === 'ARRIVED')
     );
   }, [selectedStopId, notifications]);
+
+  const handleOpenAlternativesForStop = (stopName: string) => {
+    setTargetAlternativeStop(stopName);
+    setIsAlternativesModalOpen(true);
+  };
+
+  const handleSwitchToReplacement = (replacementBusNumber: string) => {
+    const repBus = buses.find((b) => b.bus_number === replacementBusNumber);
+    if (repBus) {
+      setActiveBus(repBus);
+      const repRoute = routes.find((r) => r.id === repBus.route_id);
+      if (repRoute) setActiveRoute(repRoute);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -107,13 +164,21 @@ export const StudentView: React.FC = () => {
               <MapPin className="w-3.5 h-3.5 text-[#64748B]" />
               <span>Indore Region</span>
             </span>
+            {replacements.filter((r) => r.status === 'PUBLISHED').length > 0 && (
+              <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-1.5 animate-pulse">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                <span>
+                  {replacements.filter((r) => r.status === 'PUBLISHED').length} Daily Bus Changes Active
+                </span>
+              </span>
+            )}
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#166534] leading-tight mb-2.5">
-            Real-Time College Bus Tracking & ETA Prediction
+            Real-Time College Bus Tracking & Nearby Route Finder
           </h1>
           <p className="text-[#64748B] font-medium text-sm sm:text-base mb-6 max-w-2xl leading-relaxed">
-            Live telemetry for Acropolis Institute of Technology & Research (AITR), Indore. Search your stop, track bus progress, and monitor arrival predictions.
+            Live telemetry for Acropolis Institute of Technology & Research (AITR). Track buses in real-time, find smart nearby alternative routes, and view verified daily replacement announcements.
           </p>
 
           {/* Claymorphic Inset Search Bar */}
@@ -122,16 +187,21 @@ export const StudentView: React.FC = () => {
               <Search className="w-5 h-5 text-[#64748B] absolute left-4 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search your stop or locality (e.g. Mhow Naka, Bhanwarkua, Palasia, Vijay Nagar)..."
+                placeholder="Search your stop or locality (e.g. Bhanwarkua, IT Park, Bengali, Musakhedi, Vijay Nagar)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full clay-input text-[#17301F] font-medium placeholder-[#64748B] text-sm sm:text-base pl-12 pr-32 py-3.5 focus:outline-none"
               />
               <button
                 type="button"
+                onClick={() => {
+                  if (searchQuery.trim()) {
+                    handleOpenAlternativesForStop(searchQuery.trim());
+                  }
+                }}
                 className="absolute right-2 px-4 py-2 clay-btn-primary text-xs sm:text-sm font-bold uppercase cursor-pointer"
               >
-                Find Bus
+                Find Alternatives
               </button>
             </div>
 
@@ -156,6 +226,14 @@ export const StudentView: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                          <button
+                            onClick={() => handleOpenAlternativesForStop(item.stopName)}
+                            className="px-2.5 py-1 text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 flex items-center gap-1 shadow-xs"
+                            title="Find other buses serving this stop or nearby"
+                          >
+                            <Navigation className="w-3 h-3" />
+                            <span>Alternatives</span>
+                          </button>
                           {item.buses.map((b) => (
                             <button
                               key={b.id}
@@ -180,7 +258,7 @@ export const StudentView: React.FC = () => {
           </div>
         </div>
 
-        {/* Shift Selector & Timetable Action Row (Claymorphic Buttons) */}
+        {/* Shift Selector & Smart Finder Action Row */}
         <div className="mt-8 pt-5 border-t border-white/60 flex flex-wrap items-center justify-between gap-4 text-xs font-bold">
           <div className="flex items-center gap-3">
             <span className="text-[#64748B] uppercase tracking-wide">College Shift:</span>
@@ -208,22 +286,94 @@ export const StudentView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Quick Action Modals Trigger Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => setIsScheduleModalOpen(true)}
-              className="px-4 py-2 clay-btn-mint flex items-center gap-1.5 cursor-pointer"
+              onClick={() => {
+                setTargetAlternativeStop(selectedStop?.stop_name || 'Bhanwarkua Chouraha');
+                setIsAlternativesModalOpen(true);
+              }}
+              className="px-4 py-2 clay-btn-mint flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              <Calendar className="w-4 h-4 text-[#166534]" />
-              <span>View Route Schedule</span>
+              <Navigation className="w-4 h-4 text-[#166534]" />
+              <span>Nearby Alternative Buses</span>
             </button>
 
-            <div className="flex items-center gap-2 glass-panel-mint px-3.5 py-2 text-[#166534]">
-              <Clock className="w-4 h-4 text-[#166534]" />
-              <span>Recommended: <b>10 minutes before</b> bus arrival.</span>
-            </div>
+            <button
+              onClick={() => setIsProblemAreasModalOpen(true)}
+              className="px-4 py-2 clay-btn-white text-[#17301F] border border-emerald-100 flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <Compass className="w-4 h-4 text-[#166534]" />
+              <span>Bottleneck Hubs Directory</span>
+            </button>
+
+            <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="px-3.5 py-2 bg-white/80 hover:bg-white text-[#17301F] border border-white/90 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Calendar className="w-4 h-4 text-[#166534]" />
+              <span>Timetable</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Confirmed Bus Replacement Official Announcement Banner */}
+      {(activeReplacementForCurrentBus || activeReplacementForCurrentStop) && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/95 border-2 border-amber-400 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-xl shadow-xs shrink-0">
+              ⚠️
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded text-[11px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-300">
+                  Official Transport Notice
+                </span>
+                <span className="text-xs font-bold text-amber-900">
+                  Effective: {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.effective_date} (
+                  {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.shift === 'both'
+                    ? 'Both Shifts'
+                    : (activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.shift}
+                  )
+                </span>
+              </div>
+
+              <h3 className="text-base font-extrabold text-amber-950">
+                Bus {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.replacement_bus_number} is the confirmed replacement for Bus {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.regular_bus_number}
+              </h3>
+
+              <p className="text-xs text-amber-900 mt-1 font-medium leading-relaxed">
+                <strong>Reason: </strong>
+                {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.reason}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-amber-950 font-semibold">
+                <span>
+                  Assigned Driver: <strong>{(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.replacement_driver_name || 'Staff Driver'}</strong>
+                </span>
+                <span className="flex items-center gap-1 text-[#166534]">
+                  <Phone className="w-3.5 h-3.5" />
+                  {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.replacement_driver_phone || 'Contact on file with Transport Cell'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+            <button
+              onClick={() => {
+                const repNum = (activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.replacement_bus_number;
+                if (repNum) handleSwitchToReplacement(repNum);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all active:scale-95"
+            >
+              <span>Track Replacement Bus {(activeReplacementForCurrentBus || activeReplacementForCurrentStop)?.replacement_bus_number}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Approaching Alert Banner (Claymorphic Green Alert) */}
       {approachingAlert && (
@@ -260,86 +410,58 @@ export const StudentView: React.FC = () => {
                   const r = routes.find((rt) => rt.id === e.target.value);
                   if (r) {
                     setActiveRoute(r);
-                    const b = buses.find((bus) => bus.route_id === r.id);
-                    if (b) setActiveBus(b);
+                    const defaultBus = buses.find((b) => b.route_id === r.id);
+                    if (defaultBus) setActiveBus(defaultBus);
                     if (r.stops.length > 0) setSelectedStopId(r.stops[0].stop_id);
                   }
                 }}
-                className="text-xs font-bold text-[#17301F] bg-white border border-[#A7F3D0] rounded-xl px-3 py-1.5 focus:outline-none shadow-[inset_1px_1px_3px_rgba(0,0,0,0.04)]"
+                className="clay-input text-xs font-bold text-[#17301F] py-1.5 px-3 rounded-xl focus:outline-none max-w-[280px] truncate"
               >
-                {routes.map((rt) => (
-                  <option key={rt.id} value={rt.id}>
-                    {rt.route_name} ({rt.assigned_bus_numbers.join(', ')})
+                {routes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.route_name}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Bus Picker within route */}
-            {activeRoute && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold uppercase text-[#64748B]">Bus:</span>
-                  {buses
-                    .filter((b) => b.route_id === activeRoute.id)
-                    .map((b) => {
-                      const isSelected = activeBus?.id === b.id;
-                      const isLive = b.status === 'ACTIVE' || b.status === 'APPROACHING';
-                      return (
-                        <button
-                          key={b.id}
-                          onClick={() => setActiveBus(b)}
-                          className={`px-3 py-1 text-xs font-bold uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                            isSelected
-                              ? 'clay-btn-primary shadow-xs'
-                              : 'clay-btn-white hover:border-[#22C55E]'
-                          }`}
-                        >
-                          {isLive && <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>}
-                          <span>{b.bus_number}</span>
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <button
-                  onClick={() => setIsScheduleModalOpen(true)}
-                  className="px-3 py-1.5 clay-btn-mint text-xs font-bold uppercase cursor-pointer"
-                >
-                  Schedule
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (selectedStop) {
+                    handleOpenAlternativesForStop(selectedStop.stop_name);
+                  } else if (activeRoute && activeRoute.stops.length > 0) {
+                    handleOpenAlternativesForStop(activeRoute.stops[0].stop_name);
+                  }
+                }}
+                className="px-3 py-1.5 text-xs font-bold clay-btn-mint flex items-center gap-1 shadow-xs"
+                title="Find alternative buses for this route/stop"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Nearby Alternatives</span>
+              </button>
+            </div>
           </div>
 
-          {/* Interactive Live Map (Glass Card Frame with Soft Clay Border) */}
-          <div className="glass-panel p-2.5">
-            <LeafletMap
-              activeBus={activeBus}
-              activeRoute={activeRoute}
-              allActiveBuses={activeBusesList}
-              selectedStopId={selectedStopId}
-              onSelectStop={(stopId) => setSelectedStopId(stopId)}
-              onSelectBus={(bus) => setActiveBus(bus)}
-              height="440px"
-            />
-          </div>
+          {/* Leaflet Interactive Map View */}
+          <LeafletMap activeBus={activeBus} activeRoute={activeRoute} selectedStopId={selectedStopId} />
 
-          {/* Active Live Fleet Cards (Claymorphic Fleet Pods) */}
-          <div className="glass-panel p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3.5 border-b border-white/60 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-                <h3 className="text-xs font-bold text-[#166534] uppercase tracking-wider">
-                  Active Live Buses ({activeBusesList.length})
-                </h3>
-              </div>
-              <span className="text-xs text-[#64748B]">Tap bus to track</span>
+          {/* Active Fleet Quick Switcher Grid (Claymorphic Cards) */}
+          <div className="glass-panel p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase text-[#166534] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                Active Buses On Route ({activeBusesList.length} Active / {buses.length} Total)
+              </span>
+              <span className="text-[11px] text-[#64748B] font-medium">Click bus card to track</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {activeBusesList.map((bus) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
+              {buses.slice(0, 15).map((bus) => {
                 const isSelected = activeBus?.id === bus.id;
+                const isReplaced = bus.assignment_status === 'REPLACED_TEMPORARILY';
+                const isReplacement = bus.assignment_status === 'CONFIRMED_REPLACEMENT';
+
                 return (
                   <button
                     key={bus.id}
@@ -348,7 +470,7 @@ export const StudentView: React.FC = () => {
                       const r = routes.find((rt) => rt.id === bus.route_id);
                       if (r) setActiveRoute(r);
                     }}
-                    className={`p-3.5 text-left transition-all cursor-pointer ${
+                    className={`p-3 text-left transition-all cursor-pointer rounded-2xl ${
                       isSelected
                         ? 'clay-card-active'
                         : 'clay-card clay-card-hover'
@@ -356,14 +478,24 @@ export const StudentView: React.FC = () => {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-sm text-[#166534] font-mono">BUS {bus.bus_number}</span>
-                      <span className="text-[10px] px-2 py-0.5 clay-pill-live">
-                        ● LIVE
-                      </span>
+                      {isReplacement ? (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-800">
+                          REP
+                        </span>
+                      ) : bus.status === 'ACTIVE' ? (
+                        <span className="text-[10px] px-2 py-0.5 clay-pill-live">
+                          ● LIVE
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[#64748B] font-semibold">
+                          {isReplaced ? 'Replaced' : 'Standby'}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-medium text-[#64748B] truncate mt-1">
-                      {bus.driver_name || 'Driver'}
+                      {bus.driver_name || 'Driver on file'}
                     </div>
-                    <div className="text-[11px] font-bold text-[#17301F] uppercase truncate mt-0.5">
+                    <div className="text-[10px] font-bold text-[#17301F] uppercase truncate mt-0.5">
                       Next: {bus.next_stop_name || 'AITR Campus'}
                     </div>
                   </button>
@@ -399,12 +531,29 @@ export const StudentView: React.FC = () => {
                     >
                       {activeBus.status === 'ACTIVE' ? '● LIVE' : activeBus.status}
                     </span>
+
+                    {activeBus.assignment_status === 'CONFIRMED_REPLACEMENT' && (
+                      <span className="text-xs px-2 py-0.5 font-black bg-amber-100 text-amber-800 border border-amber-300 rounded-lg">
+                        CONFIRMED REPLACEMENT
+                      </span>
+                    )}
                   </div>
+
                   <h3 className="text-sm font-bold text-[#17301F] mt-3">
                     {activeRoute?.route_name || 'AITR Route'}
                   </h3>
-                  <div className="text-xs text-[#64748B] mt-0.5">
-                    Driver: <b>{activeBus.driver_name}</b> · {activeBus.driver_phone}
+
+                  <div className="text-xs text-[#64748B] mt-1 flex flex-wrap items-center gap-2">
+                    <span>Driver: <b>{activeBus.driver_name || 'Driver on file'}</b></span>
+                    <span className="text-slate-300">·</span>
+                    {activeBus.driver_phone ? (
+                      <span className="font-semibold text-[#166534] flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {activeBus.driver_phone}
+                      </span>
+                    ) : (
+                      <span className="text-[#64748B] italic">Phone: Not Provided (Driver on file)</span>
+                    )}
                   </div>
                 </div>
 
@@ -415,12 +564,7 @@ export const StudentView: React.FC = () => {
                 )}
               </div>
 
-              {/* ETA Card:
-                  Background: #FFFFFF
-                  Border:     #A7F3D0
-                  ETA:        #166534
-                  Styled with Claymorphism 3D tactile elevation & inner specular bevel
-              */}
+              {/* ETA Card: Styled with Claymorphism 3D tactile elevation */}
               {currentETA ? (
                 <div className="bg-[#FFFFFF] border-2 border-[#A7F3D0] rounded-2xl p-4.5 shadow-[6px_8px_20px_rgba(22,101,52,0.08),inset_2px_2px_4px_rgba(255,255,255,0.9),inset_-1.5px_-1.5px_3px_rgba(22,101,52,0.04)] relative overflow-hidden transition-all duration-200">
                   <div className="flex items-center justify-between text-xs text-[#64748B] font-bold uppercase mb-1">
@@ -459,10 +603,13 @@ export const StudentView: React.FC = () => {
 
                   <div className="mt-3.5 pt-3 border-t border-[#A7F3D0]/70 flex items-center justify-between text-[11px] font-bold text-[#64748B] uppercase">
                     <span>Stops Remaining: <b className="text-[#166534]">{currentETA.remaining_stops_count}</b></span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
-                      <span>Updated {currentETA.last_updated_seconds_ago}s ago</span>
-                    </span>
+                    <button
+                      onClick={() => handleOpenAlternativesForStop(currentETA.target_stop_name)}
+                      className="text-[11px] font-bold text-[#166534] underline hover:text-emerald-800 flex items-center gap-1 lowercase"
+                    >
+                      <Navigation className="w-3 h-3 inline" />
+                      <span>find alternative buses for this stop</span>
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -503,12 +650,28 @@ export const StudentView: React.FC = () => {
                     {activeRoute.stops.length} stops from {activeRoute.origin} to AITR
                   </span>
                 </div>
-                <button
-                  onClick={() => setIsScheduleModalOpen(true)}
-                  className="text-xs font-bold uppercase clay-btn-mint px-2.5 py-1 cursor-pointer"
-                >
-                  Timetable
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedStop) {
+                        handleOpenAlternativesForStop(selectedStop.stop_name);
+                      } else {
+                        handleOpenAlternativesForStop(activeRoute.stops[0]?.stop_name || '');
+                      }
+                    }}
+                    className="text-xs font-bold uppercase clay-btn-mint px-2.5 py-1 cursor-pointer flex items-center gap-1 shadow-xs"
+                    title="Find nearby alternatives for this stop"
+                  >
+                    <Navigation className="w-3 h-3" />
+                    <span>Alternatives</span>
+                  </button>
+                  <button
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="text-xs font-bold uppercase bg-white text-[#17301F] border border-emerald-100 rounded-lg px-2.5 py-1 cursor-pointer shadow-xs"
+                  >
+                    Timetable
+                  </button>
+                </div>
               </div>
 
               {/* Vertical Stop Timeline with Clay Cards */}
@@ -562,7 +725,16 @@ export const StudentView: React.FC = () => {
                             SELECTED
                           </span>
                         )}
-                        <ChevronRight className="w-4 h-4 text-[#64748B]" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAlternativesForStop(rs.stop_name);
+                          }}
+                          className="p-1 rounded-md text-[#64748B] hover:text-[#166534] hover:bg-emerald-50 transition-colors"
+                          title={`Find alternative buses for ${rs.stop_name}`}
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -586,6 +758,27 @@ export const StudentView: React.FC = () => {
           if (route.stops.length > 0) setSelectedStopId(route.stops[0].stop_id);
         }}
         currentShift={shift}
+      />
+
+      {/* Smart Nearby Alternative Buses Modal */}
+      <NearbyAlternativesModal
+        isOpen={isAlternativesModalOpen}
+        onClose={() => setIsAlternativesModalOpen(false)}
+        initialStopName={targetAlternativeStop}
+        onSelectBus={(bus, route) => {
+          setActiveBus(bus);
+          if (route) setActiveRoute(route);
+        }}
+      />
+
+      {/* Persistent Recurring Problem Areas Directory Modal */}
+      <ProblemAreasDirectoryModal
+        isOpen={isProblemAreasModalOpen}
+        onClose={() => setIsProblemAreasModalOpen(false)}
+        onSelectBus={(bus, route) => {
+          setActiveBus(bus);
+          if (route) setActiveRoute(route);
+        }}
       />
     </div>
   );

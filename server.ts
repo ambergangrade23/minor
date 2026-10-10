@@ -6,6 +6,11 @@ import { fileURLToPath } from 'url';
 import { transitStore } from './server/store';
 import { calculateRouteAwareETA } from './src/utils/eta';
 import { AITR_COORDINATES } from './src/data/aitrMasterData';
+import {
+  findNearbyAlternativeBuses,
+  calculateRouteSimilarity,
+  getRecurringProblemAreaHubs,
+} from './src/utils/routeFinder';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -374,6 +379,126 @@ app.post('/api/admin/demo-simulate', (req: Request, res: Response) => {
 // 15. Notifications List
 app.get('/api/notifications', (_req: Request, res: Response) => {
   res.json({ success: true, notifications: transitStore.notifications });
+});
+
+// 16. Get Bus Changes / Replacements
+app.get('/api/replacements', (_req: Request, res: Response) => {
+  res.json({ success: true, replacements: transitStore.getBusChanges() });
+});
+
+// 17. Publish Daily Bus Change
+app.post('/api/replacements', (req: Request, res: Response) => {
+  try {
+    const { regular_bus_id, replacement_bus_id, effective_date, shift, affected_stops, reason, published_by } = req.body;
+    if (!regular_bus_id || !replacement_bus_id || !effective_date || !affected_stops || !affected_stops.length) {
+      return res.status(400).json({ error: 'Missing required replacement fields (regular bus, replacement bus, effective date, affected stops)' });
+    }
+
+    const { change, notification } = transitStore.publishBusChange({
+      regular_bus_id,
+      replacement_bus_id,
+      effective_date,
+      shift: shift || 'both',
+      affected_stops,
+      reason: reason || 'Scheduled Fleet Operational Adjustment',
+      published_by,
+    });
+
+    broadcast('replacement:new', change);
+    broadcast('notification:new', notification);
+    broadcast('metrics:update', transitStore.getMetrics());
+
+    res.json({ success: true, change, notification });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error publishing bus change';
+    res.status(400).json({ error: msg });
+  }
+});
+
+// 18. Cancel Bus Change
+app.post('/api/replacements/:id/cancel', (req: Request, res: Response) => {
+  try {
+    const change = transitStore.cancelBusChange(req.params.id);
+    if (!change) return res.status(404).json({ error: 'Bus change not found' });
+
+    broadcast('replacement:cancelled', change);
+    broadcast('metrics:update', transitStore.getMetrics());
+
+    res.json({ success: true, change });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error cancelling bus change';
+    res.status(500).json({ error: msg });
+  }
+});
+
+// 19. Smart Nearby Alternative Buses Finder
+app.get('/api/alternatives/nearby', (req: Request, res: Response) => {
+  const stopName = (req.query.stopName as string) || '';
+  const shift = (req.query.shift as 'shift_1' | 'shift_2') || 'shift_1';
+  const regularBusId = req.query.busId as string | undefined;
+
+  const routes = Array.from(transitStore.routes.values());
+  const buses = Array.from(transitStore.buses.values());
+  const replacements = transitStore.getBusChanges();
+
+  const alternatives = findNearbyAlternativeBuses({
+    targetStopName: stopName,
+    shift,
+    routes,
+    buses,
+    regularBusId,
+    confirmedReplacements: replacements,
+  });
+
+  res.json({ success: true, alternatives });
+});
+
+// 20. Problem Areas Directory Hubs
+app.get('/api/alternatives/problem-areas', (_req: Request, res: Response) => {
+  const routes = Array.from(transitStore.routes.values());
+  const buses = Array.from(transitStore.buses.values());
+  const replacements = transitStore.getBusChanges();
+
+  const hubs = getRecurringProblemAreaHubs(routes, buses, replacements);
+  res.json({ success: true, hubs });
+});
+
+// 21. Route Similarity & Corridor Predictions
+app.get('/api/alternatives/corridors', (req: Request, res: Response) => {
+  const routeId = req.query.routeId as string;
+  const targetRoute = routeId ? transitStore.routes.get(routeId) : null;
+  const allRoutes = Array.from(transitStore.routes.values());
+
+  if (!targetRoute) {
+    return res.json({ success: true, allCorridors: allRoutes.map((r) => ({ id: r.id, name: r.route_name })) });
+  }
+
+  const comparisons = allRoutes
+    .filter((r) => r.id !== targetRoute.id)
+    .map((r) => {
+      const sim = calculateRouteSimilarity(targetRoute, r);
+      const assignedBuses = Array.from(transitStore.buses.values()).filter((b) => b.route_id === r.id);
+      return {
+        route: r,
+        similarity: sim.score,
+        sharedStops: sim.sharedStops,
+        corridor: sim.sharedCorridor,
+        candidateBuses: assignedBuses,
+      };
+    })
+    .filter((c) => c.similarity >= 30)
+    .sort((a, b) => b.similarity - a.similarity);
+
+  res.json({ success: true, targetRoute, candidateRoutes: comparisons });
+});
+
+// 22. Update Bus Assignment & Driver Info (Admin)
+app.put('/api/buses/:id', (req: Request, res: Response) => {
+  const bus = transitStore.updateBus(req.params.id, req.body);
+  if (!bus) return res.status(404).json({ error: 'Bus not found' });
+  broadcast('bus:updated', bus);
+  broadcast('metrics:update', transitStore.getMetrics());
+  res.json({ success: true, bus });
 });
 
 // Vite Middleware for Development

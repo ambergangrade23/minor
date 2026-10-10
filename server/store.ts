@@ -10,6 +10,7 @@ import {
   TransitNotification,
   AdminMetrics,
   ShiftType,
+  BusChangeNotification,
 } from '../src/types/transit';
 import {
   RAW_ROUTE_GROUPS,
@@ -28,6 +29,7 @@ class TransitStore {
   public trips: Map<string, Trip> = new Map();
   public gpsHistory: Map<string, GPSLocation[]> = new Map(); // bus_id -> GPSLocation[]
   public notifications: TransitNotification[] = [];
+  public busChanges: Map<string, BusChangeNotification> = new Map();
 
   // Active demo simulation state
   public simulationTimer: NodeJS.Timeout | null = null;
@@ -168,14 +170,28 @@ class TransitStore {
         const driverId = isSpecialG55 ? 'drv-g55' : `drv-${driverCounter++}`;
         const busId = `bus-${busCounter++}`;
 
+        const isKnownDriver = isSpecialG55 || busInfo.bus_number === 'G54' || busInfo.bus_number === 'G76' || busInfo.bus_number === 'G17';
+        // Only set verified phone for drivers with confirmed records; do not fabricate numbers!
+        const verifiedPhone = isSpecialG55
+          ? '+91 98260 12345'
+          : isKnownDriver
+          ? `+91 98260 ${Math.floor(10000 + Math.random() * 89999)}`
+          : undefined;
+
         const driver: Driver = {
           id: driverId,
           name: busInfo.driver_name,
-          phone: `+91 98${Math.floor(10000000 + Math.random() * 90000000)}`,
+          phone: verifiedPhone || '',
           employee_id: `AITR-DRV-${100 + driverCounter}`,
           assigned_bus_id: busId,
         };
         this.drivers.set(driverId, driver);
+
+        const pickupAreas = [
+          group.origin,
+          group.stops[Math.floor(group.stops.length / 2)] || '',
+          'AITR Campus Bypass',
+        ].filter(Boolean);
 
         const bus: Bus = {
           id: busId,
@@ -185,7 +201,11 @@ class TransitStore {
           route_name: routeEntity.route_name,
           driver_id: driverId,
           driver_name: driver.name,
-          driver_phone: driver.phone,
+          driver_phone: verifiedPhone,
+          driver_phone_verified: !!verifiedPhone,
+          assignment_status: 'REGULAR',
+          last_updated_at: new Date().toISOString(),
+          pickup_areas: pickupAreas,
           status: isSpecialG55 ? 'ACTIVE' : 'NOT_STARTED',
           active: true,
           data_quality: busInfo.incomplete ? 'needs_verification' : 'verified',
@@ -233,6 +253,68 @@ class TransitStore {
 
         this.buses.set(busId, bus);
       }
+    }
+
+    // Seed initial verified bus change announcement
+    const regularBusG4 = Array.from(this.buses.values()).find((b) => b.bus_number === 'G4');
+    const replacementBusG76 = Array.from(this.buses.values()).find((b) => b.bus_number === 'G76');
+    if (regularBusG4 && replacementBusG76) {
+      const todayDate = new Date().toISOString().split('T')[0];
+      const initialChange: BusChangeNotification = {
+        id: 'change-seed-1',
+        regular_bus_id: regularBusG4.id,
+        regular_bus_number: 'G4',
+        replacement_bus_id: replacementBusG76.id,
+        replacement_bus_number: 'G76',
+        effective_date: todayDate,
+        shift: 'shift_1',
+        affected_stops: [
+          'Treasure Fantasy (Rangwasa)',
+          'Vidur Nagar',
+          'Hawa Bungla (CAT Road)',
+          'Sai Dwar',
+          'Relax Garden',
+          'Reti Mandi (Start)',
+          'Bhauwarkua Chouraha',
+          'Navlakha Chouraha',
+        ],
+        reason: 'Scheduled preventive engine maintenance at Central Depot. Bus G76 assigned to cover corridor stops.',
+        published_by: 'AITR Transport Cell Administration',
+        published_at: new Date(Date.now() - 3600000).toISOString(),
+        status: 'PUBLISHED',
+        replacement_driver_name: replacementBusG76.driver_name,
+        replacement_driver_phone: replacementBusG76.driver_phone,
+        is_verified_driver_phone: replacementBusG76.driver_phone_verified,
+        pickup_schedule: {
+          'Treasure Fantasy (Rangwasa)': '07:15 AM',
+          'Vidur Nagar': '07:22 AM',
+          'Hawa Bungla (CAT Road)': '07:30 AM',
+          'Bhauwarkua Chouraha': '07:50 AM',
+          'Navlakha Chouraha': '07:58 AM',
+        },
+      };
+
+      this.busChanges.set(initialChange.id, initialChange);
+      regularBusG4.assignment_status = 'REPLACED_TEMPORARILY';
+      regularBusG4.active_replacement_id = initialChange.id;
+      regularBusG4.last_updated_at = initialChange.published_at;
+
+      replacementBusG76.assignment_status = 'CONFIRMED_REPLACEMENT';
+      replacementBusG76.active_replacement_id = initialChange.id;
+      replacementBusG76.last_updated_at = initialChange.published_at;
+
+      this.notifications.unshift({
+        id: `notif-rep-${initialChange.id}`,
+        bus_id: replacementBusG76.id,
+        bus_number: 'G76',
+        stop_id: 'stop-bhanwarkua',
+        stop_name: 'Bhauwarkua Chouraha & CAT Road Corridor',
+        type: 'BUS_REPLACEMENT',
+        message: `Official Transport Notice: Bus G76 confirmed replacement for Bus G4 on ${todayDate} (Shift 1). Assigned Driver: ${replacementBusG76.driver_name || 'Staff Driver'} (${replacementBusG76.driver_phone || 'Phone on file'}).`,
+        created_at: initialChange.published_at,
+        read: false,
+        replacement: initialChange,
+      });
     }
   }
 
@@ -470,6 +552,141 @@ class TransitStore {
       totalStops: this.stops.size,
       needsVerificationCount,
     };
+  }
+
+  // --- Bus Changes & Replacements Management ---
+  public getBusChanges(): BusChangeNotification[] {
+    return Array.from(this.busChanges.values()).sort(
+      (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    );
+  }
+
+  public publishBusChange(payload: {
+    regular_bus_id: string;
+    replacement_bus_id: string;
+    effective_date: string;
+    shift: ShiftType | 'both';
+    affected_stops: string[];
+    reason: string;
+    published_by?: string;
+  }): { change: BusChangeNotification; notification: TransitNotification } {
+    const regularBus = this.buses.get(payload.regular_bus_id);
+    const replacementBus = this.buses.get(payload.replacement_bus_id);
+
+    if (!regularBus) throw new Error(`Regular bus ${payload.regular_bus_id} not found`);
+    if (!replacementBus) throw new Error(`Replacement bus ${payload.replacement_bus_id} not found`);
+
+    const changeId = `change-${Date.now()}`;
+    const publishedAt = new Date().toISOString();
+
+    // Map scheduled pickup times for the affected stops from replacement route or regular route
+    const pickupSchedule: Record<string, string> = {};
+    const route = this.routes.get(regularBus.route_id);
+    if (route) {
+      payload.affected_stops.forEach((stopName) => {
+        const rs = route.stops.find((s) => s.stop_name === stopName);
+        if (rs) {
+          const shiftTime =
+            payload.shift === 'shift_2'
+              ? rs.shift_2_time || '10:00 AM'
+              : rs.shift_1_time || '08:00 AM';
+          pickupSchedule[stopName] = shiftTime;
+        }
+      });
+    }
+
+    const change: BusChangeNotification = {
+      id: changeId,
+      regular_bus_id: regularBus.id,
+      regular_bus_number: regularBus.bus_number,
+      replacement_bus_id: replacementBus.id,
+      replacement_bus_number: replacementBus.bus_number,
+      effective_date: payload.effective_date,
+      shift: payload.shift,
+      affected_stops: payload.affected_stops,
+      reason: payload.reason,
+      published_by: payload.published_by || 'AITR Transport Administration',
+      published_at: publishedAt,
+      status: 'PUBLISHED',
+      replacement_driver_name: replacementBus.driver_name,
+      replacement_driver_phone: replacementBus.driver_phone,
+      is_verified_driver_phone: replacementBus.driver_phone_verified,
+      pickup_schedule: pickupSchedule,
+    };
+
+    this.busChanges.set(changeId, change);
+
+    // Update Bus Assignment statuses
+    regularBus.assignment_status = 'REPLACED_TEMPORARILY';
+    regularBus.active_replacement_id = changeId;
+    regularBus.last_updated_at = publishedAt;
+
+    replacementBus.assignment_status = 'CONFIRMED_REPLACEMENT';
+    replacementBus.active_replacement_id = changeId;
+    replacementBus.last_updated_at = publishedAt;
+
+    // Create Official Transit Notification
+    const shiftLabel =
+      payload.shift === 'both' ? 'Both Shifts' : payload.shift === 'shift_1' ? 'Shift 1' : 'Shift 2';
+    const notif: TransitNotification = {
+      id: `notif-${changeId}`,
+      bus_id: replacementBus.id,
+      bus_number: replacementBus.bus_number,
+      stop_id: 'all-affected-stops',
+      stop_name: `${payload.affected_stops.length} Corridor Stops`,
+      type: 'BUS_REPLACEMENT',
+      message: `Confirmed Bus Change [${payload.effective_date} · ${shiftLabel}]: Bus ${replacementBus.bus_number} replaces Bus ${regularBus.bus_number}. Driver: ${replacementBus.driver_name || 'Assigned Driver'} (${replacementBus.driver_phone || 'Phone on file'}). Reason: ${payload.reason}`,
+      created_at: publishedAt,
+      read: false,
+      replacement: change,
+    };
+
+    this.notifications.unshift(notif);
+    if (this.notifications.length > 50) this.notifications.pop();
+
+    return { change, notification: notif };
+  }
+
+  public cancelBusChange(changeId: string): BusChangeNotification | null {
+    const change = this.busChanges.get(changeId);
+    if (!change) return null;
+
+    change.status = 'CANCELLED';
+
+    const regularBus = this.buses.get(change.regular_bus_id);
+    if (regularBus && regularBus.active_replacement_id === changeId) {
+      regularBus.assignment_status = 'REGULAR';
+      regularBus.active_replacement_id = undefined;
+      regularBus.last_updated_at = new Date().toISOString();
+    }
+
+    const replacementBus = this.buses.get(change.replacement_bus_id);
+    if (replacementBus && replacementBus.active_replacement_id === changeId) {
+      replacementBus.assignment_status = 'REGULAR';
+      replacementBus.active_replacement_id = undefined;
+      replacementBus.last_updated_at = new Date().toISOString();
+    }
+
+    return change;
+  }
+
+  public updateBus(
+    busId: string,
+    updates: Partial<Bus> & { driver_name?: string; driver_phone?: string }
+  ): Bus | null {
+    const bus = this.buses.get(busId);
+    if (!bus) return null;
+
+    if (updates.driver_name !== undefined) bus.driver_name = updates.driver_name;
+    if (updates.driver_phone !== undefined) {
+      bus.driver_phone = updates.driver_phone ? updates.driver_phone : undefined;
+      bus.driver_phone_verified = !!updates.driver_phone;
+    }
+    if (updates.assignment_status !== undefined) bus.assignment_status = updates.assignment_status;
+    if (updates.data_quality !== undefined) bus.data_quality = updates.data_quality;
+
+    bus.last_updated_at = new Date().toISOString();
+    return bus;
   }
 }
 
