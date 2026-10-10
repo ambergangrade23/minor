@@ -88,6 +88,8 @@ export interface Bus {
   current_stop_index?: number;
   current_stop_name?: string;
   next_stop_name?: string;
+  next_stop_id?: string;
+  next_stop_sequence?: number;
   distance_to_next_km?: number;
   eta_to_next_min?: number;
   is_simulated?: boolean;

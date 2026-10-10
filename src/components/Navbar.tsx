@@ -62,7 +62,7 @@ export const Navbar: React.FC = () => {
           {/* Live Status Badge (Claymorphic) */}
           <div className="hidden sm:flex items-center gap-2 text-xs font-bold bg-[#114b26]/90 backdrop-blur-md text-white px-3 py-1.5 rounded-xl border border-white/10 shadow-[inset_1px_1px_2px_rgba(255,255,255,0.15)]">
             <span
-              className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-[#22C55E] animate-pulse shadow-[0_0_8px_#22c55e]' : 'bg-[#DC2626]'}`}
+              className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-[#22C55E] shadow-[0_0_8px_#22c55e]' : 'bg-[#DC2626]'}`}
             />
             <span className="text-[11px] uppercase tracking-wide">
               {wsConnected ? '● Live Telemetry' : 'Connecting'}

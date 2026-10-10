@@ -326,7 +326,7 @@ export const NearbyAlternativesModal: React.FC<NearbyAlternativesModalProps> = (
 
                           {cand.bus.status === 'ACTIVE' && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
                               LIVE ON ROUTE
                             </span>
                           )}

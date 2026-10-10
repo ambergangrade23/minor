@@ -276,6 +276,63 @@
   }
 }
 
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes characterWalk {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-0.8deg);
+  }
+  50% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-5px) rotate(0.8deg);
+  }
+}
+
+@keyframes characterIdle {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.004);
+  }
+}
+
+@keyframes shadowPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(0.92);
+    opacity: 0.22;
+  }
+}
+
+@keyframes radarSweep {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0%);
@@ -304,6 +361,26 @@
 
 .animate-gentle-pulse {
   animation: gentlePulse 5s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+.animate-character-walk {
+  animation: characterWalk 3.2s ease-in-out infinite;
+}
+
+.animate-character-idle {
+  animation: characterIdle 4s ease-in-out infinite;
+}
+
+.animate-shadow-pulse {
+  animation: shadowPulse 3.2s ease-in-out infinite;
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 2.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
 
 .animate-transit-dash {

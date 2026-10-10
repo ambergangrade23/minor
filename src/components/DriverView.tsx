@@ -219,7 +219,7 @@ export const DriverView: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#A7F3D0]">
                   Driver Telemetry Cockpit
                 </span>
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
               </div>
               <h2 className="text-2xl font-extrabold tracking-tight mt-0.5">
                 AITR Bus In-Transit Unit
@@ -344,7 +344,7 @@ export const DriverView: React.FC = () => {
         <div className="glass-panel p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-white/70 pb-3">
             <div className="flex items-center gap-2 text-[#166534]">
-              <Radio className="w-5 h-5 text-[#22C55E] animate-pulse" />
+              <Radio className="w-5 h-5 text-[#22C55E]" />
               <span className="font-bold text-sm uppercase">Active GPS Broadcast Signal</span>
             </div>
             <span className="text-xs clay-pill-live px-3 py-1">

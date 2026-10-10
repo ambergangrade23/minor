@@ -5,10 +5,10 @@ export const DynamicBackground: React.FC = () => {
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
       {/* 1. Ambient Glowing Glassmorphic Light Orbs on #F8FAF5 Canvas */}
-      <div className="absolute -top-24 -left-24 w-[34rem] h-[34rem] rounded-full bg-gradient-to-br from-[#A7F3D0]/40 to-[#22C55E]/15 blur-[120px] animate-gentle-pulse" />
-      <div className="absolute top-1/3 -right-28 w-[30rem] h-[30rem] rounded-full bg-gradient-to-bl from-[#22C55E]/20 to-[#A7F3D0]/25 blur-[110px] animate-float-slow" />
-      <div className="absolute bottom-1/4 left-10 w-[26rem] h-[26rem] rounded-full bg-gradient-to-tr from-[#A7F3D0]/30 to-[#166534]/10 blur-[100px] animate-float-reverse" />
-      <div className="absolute -bottom-24 right-1/4 w-[34rem] h-[34rem] rounded-full bg-gradient-to-t from-[#166534]/12 to-[#22C55E]/10 blur-[120px] animate-gentle-pulse" />
+      <div className="absolute -top-24 -left-24 w-[34rem] h-[34rem] rounded-full bg-gradient-to-br from-[#A7F3D0]/35 to-[#22C55E]/10 blur-[120px] animate-gentle-pulse" />
+      <div className="absolute top-1/3 -right-28 w-[30rem] h-[30rem] rounded-full bg-gradient-to-bl from-[#22C55E]/15 to-[#A7F3D0]/20 blur-[110px] animate-glow-pulse" />
+      <div className="absolute bottom-1/4 left-10 w-[26rem] h-[26rem] rounded-full bg-gradient-to-tr from-[#A7F3D0]/25 to-[#166534]/10 blur-[100px] animate-gentle-pulse" />
+      <div className="absolute -bottom-24 right-1/4 w-[34rem] h-[34rem] rounded-full bg-gradient-to-t from-[#166534]/10 to-[#22C55E]/10 blur-[120px] animate-glow-pulse" />
 
       {/* 2. Smooth Vector Transit Arteries */}
       <svg
@@ -42,24 +42,26 @@ export const DynamicBackground: React.FC = () => {
           strokeDasharray="10 14"
           strokeOpacity="0.3"
           className="animate-transit-dash"
-          style={{ animationDirection: 'reverse', animationDuration: '24s' }}
         />
 
-        {/* Pulsing Indore Nodes */}
+        {/* Stable Indore Nodes with subtle radar sweep */}
         <g transform="translate(380, 195)">
-          <circle cx="0" cy="0" r="14" fill="#22C55E" fillOpacity="0.25" className="animate-ping" />
+          <circle cx="0" cy="0" r="14" fill="#22C55E" fillOpacity="0.15" className="animate-radar-sweep" />
+          <circle cx="0" cy="0" r="10" fill="#22C55E" fillOpacity="0.2" />
           <circle cx="0" cy="0" r="6" fill="#166534" />
           <circle cx="0" cy="0" r="2.5" fill="#A7F3D0" />
         </g>
 
         <g transform="translate(860, 215)">
-          <circle cx="0" cy="0" r="18" fill="#22C55E" fillOpacity="0.3" className="animate-ping" style={{ animationDuration: '3s' }} />
+          <circle cx="0" cy="0" r="16" fill="#22C55E" fillOpacity="0.15" className="animate-radar-sweep" />
+          <circle cx="0" cy="0" r="12" fill="#22C55E" fillOpacity="0.2" />
           <circle cx="0" cy="0" r="7" fill="#22C55E" />
           <circle cx="0" cy="0" r="3" fill="#ffffff" />
         </g>
 
         <g transform="translate(1380, 290)">
-          <circle cx="0" cy="0" r="22" fill="#166534" fillOpacity="0.2" className="animate-ping" style={{ animationDuration: '2.5s' }} />
+          <circle cx="0" cy="0" r="18" fill="#166534" fillOpacity="0.12" className="animate-radar-sweep" />
+          <circle cx="0" cy="0" r="14" fill="#166534" fillOpacity="0.15" />
           <circle cx="0" cy="0" r="8" fill="#166534" />
           <circle cx="0" cy="0" r="3.5" fill="#A7F3D0" />
         </g>
@@ -82,7 +84,7 @@ export const DynamicBackground: React.FC = () => {
       {/* Top Right: Live Telemetry */}
       <div className="hidden lg:block absolute top-32 right-6 xl:right-12 animate-float-reverse">
         <div className="glass-panel px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-pulse shadow-[0_0_6px_#22c55e]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_6px_#22c55e]" />
           <div>
             <div className="leading-tight text-[#166534] font-extrabold flex items-center gap-1">
               <span>GPS SYNC</span>
@@ -128,7 +130,7 @@ export const LiveTransitTicker: React.FC = () => {
       <div className="animate-marquee py-2.5 text-xs font-bold uppercase text-[#17301F] tracking-wide flex items-center">
         <div className="flex items-center gap-8 px-4 whitespace-nowrap shrink-0">
           <span className="flex items-center gap-1.5 clay-pill-live px-3 py-1">
-            <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping" />
+            <span className="w-2 h-2 rounded-full bg-[#22C55E] shadow-[0_0_6px_#22c55e]" />
             <span className="font-extrabold text-[#166534]">● LIVE GPS Tracking Active</span>
           </span>
           <span className="text-[#64748B]">·</span>
@@ -155,7 +157,7 @@ export const LiveTransitTicker: React.FC = () => {
         {/* Duplicate segment for seamless infinite scroll */}
         <div className="flex items-center gap-8 px-4 whitespace-nowrap shrink-0" aria-hidden="true">
           <span className="flex items-center gap-1.5 clay-pill-live px-3 py-1">
-            <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping" />
+            <span className="w-2 h-2 rounded-full bg-[#22C55E] shadow-[0_0_6px_#22c55e]" />
             <span className="font-extrabold text-[#166534]">● LIVE GPS Tracking Active</span>
           </span>
           <span className="text-[#64748B]">·</span>

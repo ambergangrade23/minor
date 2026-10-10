@@ -153,7 +153,7 @@ export const StudentView: React.FC = () => {
           {/* Status Badges Row (Claymorphic Pills & Clean Typography) */}
           <div className="flex flex-wrap items-center gap-2.5 mb-3.5">
             <span className="clay-pill-live px-3.5 py-1 text-xs font-bold inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
               <span>AITR Live Transport Fleet</span>
             </span>
             <span className="clay-pill-mint px-3 py-1 text-xs font-bold inline-flex items-center gap-1.5">
@@ -165,7 +165,7 @@ export const StudentView: React.FC = () => {
               <span>Indore Region</span>
             </span>
             {replacements.filter((r) => r.status === 'PUBLISHED').length > 0 && (
-              <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-1.5 animate-pulse">
+              <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
                 <span>
                   {replacements.filter((r) => r.status === 'PUBLISHED').length} Daily Bus Changes Active
@@ -450,7 +450,7 @@ export const StudentView: React.FC = () => {
           <div className="glass-panel p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase text-[#166534] flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
                 Active Buses On Route ({activeBusesList.length} Active / {buses.length} Total)
               </span>
               <span className="text-[11px] text-[#64748B] font-medium">Click bus card to track</span>
@@ -521,7 +521,7 @@ export const StudentView: React.FC = () => {
                         activeBus.status === 'ACTIVE'
                           ? 'clay-pill-live'
                           : activeBus.status === 'APPROACHING'
-                          ? 'clay-pill-live animate-pulse'
+                          ? 'clay-pill-live'
                           : activeBus.status === 'DELAYED'
                           ? 'bg-[#FEF3C7] text-[#B45309] border-[#F59E0B]/60 shadow-xs'
                           : activeBus.status === 'GPS_OFFLINE'
@@ -569,10 +569,7 @@ export const StudentView: React.FC = () => {
                 <div className="bg-[#FFFFFF] border-2 border-[#A7F3D0] rounded-2xl p-4.5 shadow-[6px_8px_20px_rgba(22,101,52,0.08),inset_2px_2px_4px_rgba(255,255,255,0.9),inset_-1.5px_-1.5px_3px_rgba(22,101,52,0.04)] relative overflow-hidden transition-all duration-200">
                   <div className="flex items-center justify-between text-xs text-[#64748B] font-bold uppercase mb-1">
                     <span className="flex items-center gap-2">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#22C55E]"></span>
-                      </span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_6px_#22c55e]" />
                       <span>Target Stop:</span>
                     </span>
                     <span className="text-[#17301F] font-extrabold">{currentETA.target_stop_name}</span>

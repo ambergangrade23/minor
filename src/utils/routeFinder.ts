@@ -137,7 +137,23 @@ export function findNearbyAlternativeBuses(params: {
   if (!targetStopName) return [];
 
   const targetNorm = normalizeStopName(targetStopName);
-  const targetCoord = INDORE_LANDMARK_COORDS[targetStopName] || INDORE_LANDMARK_COORDS[targetStopName.replace(' (Start)', '')];
+  
+  // Find coordinate for target stop: check exact keys, landmark aliases, or any stop in routes
+  let targetCoord = INDORE_LANDMARK_COORDS[targetStopName] || 
+    INDORE_LANDMARK_COORDS[targetStopName.replace(' (Start)', '')] ||
+    Object.entries(INDORE_LANDMARK_COORDS).find(([k]) => normalizeStopName(k).includes(targetNorm) || targetNorm.includes(normalizeStopName(k)))?.[1];
+
+  if (!targetCoord) {
+    for (const r of routes) {
+      for (const s of r.stops) {
+        if (s.latitude !== null && s.longitude !== null && (normalizeStopName(s.stop_name).includes(targetNorm) || targetNorm.includes(normalizeStopName(s.stop_name)))) {
+          targetCoord = { lat: s.latitude, lng: s.longitude };
+          break;
+        }
+      }
+      if (targetCoord) break;
+    }
+  }
 
   const results: AlternativeBusCandidate[] = [];
   const processedBusRoutePairs = new Set<string>();
@@ -146,14 +162,20 @@ export function findNearbyAlternativeBuses(params: {
   const activeReplacements = confirmedReplacements.filter((r) => {
     if (r.status !== 'PUBLISHED') return false;
     if (r.shift !== 'both' && r.shift !== shift) return false;
-    return r.affected_stops.some((st) => normalizeStopName(st) === targetNorm);
+    return r.affected_stops.some((st) => {
+      const stNorm = normalizeStopName(st);
+      return stNorm === targetNorm || stNorm.includes(targetNorm) || targetNorm.includes(stNorm);
+    });
   });
 
   // 1. Scan all routes for Exact-Stop Matches and Nearby-Stop Matches
   for (const route of routes) {
     for (const rs of route.stops) {
       const rsNorm = normalizeStopName(rs.stop_name);
-      const isExact = rsNorm === targetNorm || rs.stop_name.toLowerCase() === targetStopName.toLowerCase();
+      const isExact = rsNorm === targetNorm || 
+        rsNorm.includes(targetNorm) || 
+        targetNorm.includes(rsNorm) || 
+        rs.stop_name.toLowerCase().includes(targetStopName.toLowerCase());
 
       let distanceMeters = 0;
       let isNearby = false;

@@ -485,7 +485,7 @@ export function normalizeStopName(name: string): string {
     .replace(/\s+/g, ' ')
     .replace(/[().,/]/g, '')
     .replace(/chouraha|choraha|chauraha|square|point|circle/g, 'chouraha')
-    .replace(/bhanwarkua|bhauwarkua/g, 'bhanwarkua')
+    .replace(/bhanwarkua|bhauwarkua|bhawarkua/g, 'bhanwarkua')
     .replace(/musakhedi|mushakhedi/g, 'musakhedi')
     .replace(/bawdiya|bavadiya|bavdiya/g, 'bawdiya')
     .replace(/kanadiya|kanadia/g, 'kanadia')

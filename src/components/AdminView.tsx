@@ -328,7 +328,7 @@ export const AdminView: React.FC = () => {
             }`}
           >
             <span>Demo Simulator</span>
-            {isDemoRunning && <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>}
+            {isDemoRunning && <span className="w-2 h-2 rounded-full bg-[#22C55E]"></span>}
           </button>
         </div>
 
@@ -767,7 +767,7 @@ export const AdminView: React.FC = () => {
           <div className="glass-panel p-4">
             <div className="flex items-center justify-between mb-3 border-b border-white/70 pb-2.5">
               <div className="flex items-center gap-2">
-                <Radio className="w-5 h-5 text-[#22C55E] animate-pulse" />
+                <Radio className="w-5 h-5 text-[#22C55E]" />
                 <h3 className="font-bold text-sm uppercase text-[#166534]">AITR Live Campus & Regional Fleet Map</h3>
               </div>
               <span className="text-xs text-[#64748B] uppercase">24 Routes Real-Time</span>
@@ -1052,7 +1052,7 @@ export const AdminView: React.FC = () => {
             </div>
             {isDemoRunning && (
               <span className="text-xs clay-pill-live px-3.5 py-1 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
                 <span>Simulation Running</span>
               </span>
             )}
