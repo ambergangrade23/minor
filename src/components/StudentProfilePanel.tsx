@@ -18,7 +18,11 @@ export const StudentProfilePanel: React.FC<StudentProfilePanelProps> = ({
       {/* Student Welcome Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div
+            onClick={() => onTriggerCharacter('wave')}
+            className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+            title="Click student to wave!"
+          >
             <img
               src="/student_avatar_icon.jpg"
               alt="Student Avatar"
@@ -42,10 +46,14 @@ export const StudentProfilePanel: React.FC<StudentProfilePanelProps> = ({
 
         {/* Decorative Activity Spark Graph */}
         <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/50">
+          <button
+            onClick={() => onTriggerCharacter('cheer')}
+            className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200/50 transition-all cursor-pointer"
+            title="Click to celebrate on-time transit!"
+          >
             <TrendingUp className="w-3 h-3" />
             <span>98% On-Time</span>
-          </div>
+          </button>
           {/* Mini weekly transit bars */}
           <div className="flex items-end gap-1 h-6 mt-1.5">
             <span className="w-1.5 h-3 rounded-full bg-slate-300" />

@@ -444,7 +444,15 @@ export const StudentView: React.FC = () => {
           </div>
 
           {/* Leaflet Interactive Map View */}
-          <LeafletMap activeBus={activeBus} activeRoute={activeRoute} selectedStopId={selectedStopId} />
+          <div className="w-full h-[520px] rounded-2xl overflow-hidden relative shadow-sm">
+            <LeafletMap
+              activeBus={activeBus}
+              activeRoute={activeRoute}
+              selectedStopId={selectedStopId}
+              height="100%"
+              enableD3Progression={true}
+            />
+          </div>
 
           {/* Active Fleet Quick Switcher Grid (Claymorphic Cards) */}
           <div className="glass-panel p-4">

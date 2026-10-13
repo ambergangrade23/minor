@@ -10,23 +10,60 @@ export type CharacterState =
   | 'react_bus'
   | 'react_alert'
   | 'react_route'
-  | 'react_driver';
+  | 'react_driver'
+  | 'cheer'
+  | 'wave';
 
 interface Student3DCanvasProps {
   interactionState: CharacterState;
   onAnimationTriggered?: (state: CharacterState) => void;
   className?: string;
+  onCharacterClick?: () => void;
 }
 
 export const Student3DCanvas: React.FC<Student3DCanvasProps> = ({
   interactionState,
+  onAnimationTriggered,
   className = '',
+  onCharacterClick,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [avatarLoaded, setAvatarLoaded] = useState<boolean>(false);
+  const [activeSpeech, setActiveSpeech] = useState<{ text: string; icon: string } | null>(null);
+
+  // Update expressive dialogue badge whenever state changes
+  useEffect(() => {
+    switch (interactionState) {
+      case 'react_bus':
+        setActiveSpeech({ text: 'Tracking your bus in real-time!', icon: '🚌' });
+        break;
+      case 'react_alert':
+        setActiveSpeech({ text: 'Checking live route updates & alerts!', icon: '🔔' });
+        break;
+      case 'react_route':
+        setActiveSpeech({ text: 'Scanning nearby alternative stops...', icon: '📍' });
+        break;
+      case 'react_driver':
+        setActiveSpeech({ text: 'Fetching driver info & contact!', icon: '👨‍✈️' });
+        break;
+      case 'cheer':
+        setActiveSpeech({ text: 'Boarding confirmed! Have a safe trip!', icon: '🎉' });
+        break;
+      case 'wave':
+        setActiveSpeech({ text: 'Welcome to AITR Campus Transit!', icon: '👋' });
+        break;
+      case 'looking_around':
+        setActiveSpeech({ text: 'Checking bus schedules for today...', icon: '👀' });
+        break;
+      case 'walking':
+      default:
+        setActiveSpeech(null);
+        break;
+    }
+  }, [interactionState]);
 
   // Offscreen canvas chroma-keying to extract character cutout with smooth transparent alpha
   useEffect(() => {
@@ -210,21 +247,45 @@ export const Student3DCanvas: React.FC<Student3DCanvasProps> = ({
 
         {/* Character Frame with Lifelike Motion Animation */}
         <div
+          onClick={onCharacterClick}
           className={`relative group cursor-pointer transition-all duration-700 ${
             interactionState === 'walking'
               ? 'animate-character-walk'
               : interactionState === 'react_bus'
-              ? 'scale-105 -translate-y-2'
+              ? 'animate-character-react-bus'
               : interactionState === 'react_alert'
-              ? 'scale-102 -translate-y-1'
+              ? 'animate-character-react-alert'
               : interactionState === 'react_route'
-              ? 'scale-105 translate-x-1'
+              ? 'animate-character-react-route'
               : interactionState === 'react_driver'
-              ? 'scale-105'
+              ? 'animate-character-react-driver'
+              : interactionState === 'cheer'
+              ? 'animate-character-cheer'
+              : interactionState === 'wave'
+              ? 'animate-character-wave'
+              : interactionState === 'turning_left'
+              ? '-translate-x-4 -rotate-3 scale-102'
+              : interactionState === 'turning_right'
+              ? 'translate-x-4 rotate-3 scale-102'
+              : interactionState === 'looking_around'
+              ? 'animate-character-walk'
               : 'animate-character-idle'
           }`}
-          title="Campus Student"
+          title="Campus Student — Click to interact!"
         >
+          {/* Reactive Speech Balloon when feature is clicked */}
+          {activeSpeech && (
+            <div className="absolute -top-12 sm:-top-14 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-speech-bubble">
+              <div className="glass-panel px-4 py-2 rounded-2xl shadow-xl border border-white/90 flex items-center gap-2 whitespace-nowrap bg-white/95">
+                <span className="text-base select-none">{activeSpeech.icon}</span>
+                <span className="text-xs font-black text-[#0f172a] tracking-tight">
+                  {activeSpeech.text}
+                </span>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white/95 rotate-45 border-r border-b border-white/90" />
+              </div>
+            </div>
+          )}
+
           {/* Feathered Cutout Canvas for the Student */}
           <canvas
             ref={canvasRef}

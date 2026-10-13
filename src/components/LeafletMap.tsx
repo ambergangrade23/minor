@@ -281,7 +281,42 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     d3SvgRef.current = svg;
     mapInstanceRef.current = map;
 
+    // Invalidate map size after DOM mount and container layout stabilize
+    const timers = [50, 150, 300, 500, 800, 1200, 2000].map((delay) =>
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+        }
+      }, delay)
+    );
+
+    // Watch for size changes of container and parent to resize map seamlessly
+    let resizeObserver: ResizeObserver | null = null;
+    if (window.ResizeObserver && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+        }
+      });
+      resizeObserver.observe(mapContainerRef.current);
+      if (mapContainerRef.current.parentElement) {
+        resizeObserver.observe(mapContainerRef.current.parentElement);
+      }
+    }
+
+    const handleWindowResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      timers.forEach(clearTimeout);
+      window.removeEventListener('resize', handleWindowResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -709,9 +744,19 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   }, [activeBus, allActiveBuses, showAllBuses, activeRoute, allStopsInProgression, onSelectBus]);
 
   return (
-    <div className="relative w-full overflow-hidden border border-white/80 rounded-2xl shadow-sm bg-[#F8FAF5]">
-      {/* Map Canvas */}
-      <div ref={mapContainerRef} style={{ height, width: '100%' }} />
+    <div
+      className="relative w-full h-full overflow-hidden border border-white/80 rounded-2xl shadow-sm bg-[#F8FAF5] flex flex-col"
+      style={{
+        height: height || '100%',
+        minHeight: height === '100%' ? '100%' : (height || '420px'),
+      }}
+    >
+      {/* Map Canvas - Pinned to absolute bounds so tiles cover entire viewport without blank space */}
+      <div
+        ref={mapContainerRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ width: '100%', height: '100%' }}
+      />
 
       {/* Real-time Commute Progression HUD (Floating Glassmorphic & Claymorphic Card) */}
       {enableD3Progression && activeRoute && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTransit } from '../context/TransitContext';
 import { Student3DCanvas, CharacterState } from './Student3DCanvas';
 import { FuturisticSidebar } from './FuturisticSidebar';
@@ -26,6 +26,7 @@ export const FuturisticCampusDashboard: React.FC = () => {
   // Character animation state (reacts to user clicks)
   const [characterState, setCharacterState] = useState<CharacterState>('walking');
   const [activeTab, setActiveTab] = useState<string>('home');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Modals state
   const [isFindBusOpen, setIsFindBusOpen] = useState<boolean>(false);
@@ -39,13 +40,24 @@ export const FuturisticCampusDashboard: React.FC = () => {
   const [showFullMap, setShowFullMap] = useState<boolean>(false);
 
   // Trigger character reaction and return to default walking after short period
-  const handleTriggerCharacter = (state: CharacterState) => {
+  const handleTriggerCharacter = (state: CharacterState, durationMs: number = 3800) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setCharacterState(state);
     if (state !== 'walking') {
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setCharacterState('walking');
-      }, 4200);
+      }, durationMs);
     }
+  };
+
+  // Direct click on the character cycles through fun reactions
+  const handleDirectCharacterClick = () => {
+    const funReactions: CharacterState[] = ['wave', 'cheer', 'react_bus', 'looking_around'];
+    const nextReaction = funReactions[Math.floor(Math.random() * funReactions.length)];
+    handleTriggerCharacter(nextReaction, 3200);
   };
 
   const handleSidebarTabChange = (tabId: string) => {
@@ -83,8 +95,8 @@ export const FuturisticCampusDashboard: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none bg-slate-900 font-sans">
       {/* =========================================================================
-          LAYER 1: FULL-SCREEN CINEMATIC UNIVERSITY CAMPUS BACKGROUND
-          Photorealistic sunny day, blue sky, modern academic buildings, reflective courtyard
+          LAYER 1: CINEMATIC CAMPUS BACKGROUND
+          A high-tech campus courtyard photograph with subtle depth
           ========================================================================= */}
       <div className="absolute inset-0 z-0">
         <img
@@ -93,19 +105,20 @@ export const FuturisticCampusDashboard: React.FC = () => {
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover object-center filter brightness-[0.98] contrast-[1.02]"
         />
-        {/* Subtle atmospheric vignette & top/bottom glass gradient */}
+        {/* Subtle atmospheric vignette & glass gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-slate-900/20 pointer-events-none" />
       </div>
 
       {/* =========================================================================
-          LAYER 2: REAL-TIME 3D STUDENT AVATAR CANVAS
-          Walking, reacting to user clicks, with soft shadow and contextual 3D HUD tags
+          LAYER 2: 3D WALKING / INTERACTIVE BOY AVATAR
+          Renders 3D boy walking and dynamically reacting to user clicks
           ========================================================================= */}
       <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
         <div className="w-full h-full max-w-7xl mx-auto">
           <Student3DCanvas
             interactionState={characterState}
             className="w-full h-full"
+            onCharacterClick={handleDirectCharacterClick}
           />
         </div>
       </div>
@@ -219,7 +232,7 @@ export const FuturisticCampusDashboard: React.FC = () => {
       {/* Floating Map HUD Toggle Button (Quickly reveal GPS Corridor Map Overlay) */}
       <button
         onClick={() => setShowFullMap(!showFullMap)}
-        className="fixed bottom-6 right-6 z-40 px-4 py-2.5 rounded-2xl bg-white/85 hover:bg-white text-[#0f172a] hover:text-[#0284c7] backdrop-blur-xl border border-white/80 shadow-[0_12px_30px_rgba(15,23,42,0.15)] text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all hover:scale-105"
+        className="fixed bottom-6 right-6 z-40 px-4 py-2.5 rounded-2xl bg-white/85 hover:bg-white text-[#0f172a] hover:text-[#0284c7] backdrop-blur-xl border border-white/80 shadow-[0_12px_30px_rgba(15,23,42,0.15)] text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
       >
         <Map className="w-4 h-4 text-[#0284c7]" />
         <span>{showFullMap ? 'Hide Route Map' : 'Interactive Map'}</span>
@@ -237,16 +250,18 @@ export const FuturisticCampusDashboard: React.FC = () => {
             </div>
             <button
               onClick={() => setShowFullMap(false)}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500"
+              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 rounded-2xl overflow-hidden mt-3 relative">
+          <div className="flex-1 w-full h-full min-h-[420px] rounded-2xl overflow-hidden mt-3 relative">
             <LeafletMap
               activeBus={activeBus}
               activeRoute={activeRoute}
               allActiveBuses={buses}
+              height="100%"
+              enableD3Progression={true}
             />
           </div>
         </div>
