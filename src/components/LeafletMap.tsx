@@ -285,17 +285,17 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     const timers = [50, 150, 300, 500, 800, 1200, 2000].map((delay) =>
       setTimeout(() => {
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+          mapInstanceRef.current.invalidateSize();
         }
       }, delay)
     );
 
-    // Watch for size changes of container and parent to resize map seamlessly
+    // Watch for size changes of container and parent to resize map seamlessly without blank space
     let resizeObserver: ResizeObserver | null = null;
     if (window.ResizeObserver && mapContainerRef.current) {
       resizeObserver = new ResizeObserver(() => {
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+          mapInstanceRef.current.invalidateSize();
         }
       });
       resizeObserver.observe(mapContainerRef.current);
@@ -306,7 +306,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
     const handleWindowResize = () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize({ debounceMoveend: true });
+        mapInstanceRef.current.invalidateSize();
       }
     };
     window.addEventListener('resize', handleWindowResize);
@@ -745,16 +745,18 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
   return (
     <div
-      className="relative w-full h-full overflow-hidden border border-white/80 rounded-2xl shadow-sm bg-[#F8FAF5] flex flex-col"
+      className="relative w-full h-full flex-1 flex-grow grow min-h-0 overflow-hidden border border-white/80 rounded-2xl shadow-sm bg-[#F8FAF5] flex flex-col"
       style={{
         height: height || '100%',
-        minHeight: height === '100%' ? '100%' : (height || '420px'),
+        width: '100%',
+        flexGrow: 1,
+        minHeight: 0,
       }}
     >
       {/* Map Canvas - Pinned to absolute bounds so tiles cover entire viewport without blank space */}
       <div
         ref={mapContainerRef}
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full flex-grow grow"
         style={{ width: '100%', height: '100%' }}
       />
 

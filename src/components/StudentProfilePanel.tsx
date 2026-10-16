@@ -27,7 +27,7 @@ export const StudentProfilePanel: React.FC<StudentProfilePanelProps> = ({
               src="/student_avatar_icon.jpg"
               alt="Student Avatar"
               referrerPolicy="no-referrer"
-              className="w-13 h-13 rounded-2xl object-cover border-2 border-white shadow-md shadow-sky-500/10"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white shadow-md shadow-sky-500/10"
             />
             <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
           </div>

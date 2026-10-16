@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TransitProvider, useTransit } from './context/TransitContext';
 import { FuturisticCampusDashboard } from './components/FuturisticCampusDashboard';
+import { StudentView } from './components/StudentView';
 import { DriverView } from './components/DriverView';
 import { AdminView } from './components/AdminView';
 import { Navbar } from './components/Navbar';
@@ -55,29 +56,7 @@ const MainContent: React.FC = () => {
       )}
 
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {role === 'student' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-black text-[#0f172a]">Acropolis Transit Operations</h1>
-                <p className="text-xs text-slate-500 font-semibold">Standard tabular schedules, corridor matrices, and verified route sheets.</p>
-              </div>
-            </div>
-            {/* Lazy-load or import existing StudentView components */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
-              <p className="text-sm text-slate-600 mb-4">
-                You can toggle between the 3D cinematic CAMPUSOPS view and detailed fleet telemetry at any time.
-              </p>
-              <button
-                onClick={() => setDashboardMode('futuristic')}
-                className="px-6 py-3 rounded-2xl bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md"
-              >
-                <Sparkles className="w-4 h-4" />
-                Launch 3D Campus Experience
-              </button>
-            </div>
-          </div>
-        )}
+        {role === 'student' && <StudentView />}
         {role === 'driver' && <DriverView />}
         {role === 'admin' && <AdminView />}
       </main>

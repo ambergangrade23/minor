@@ -302,6 +302,32 @@
   }
 }
 
+@keyframes characterWalkSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(-7px) rotate(-1.2deg) scale(1.008);
+  }
+  50% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  75% {
+    transform: translateY(-7px) rotate(1.2deg) scale(1.008);
+  }
+}
+
+@keyframes shadowWalkSlow {
+  0%, 50%, 100% {
+    transform: scale(1) translateY(0);
+    opacity: 0.55;
+  }
+  25%, 75% {
+    transform: scale(0.92, 0.95) translateY(2px);
+    opacity: 0.40;
+  }
+}
+
 @keyframes characterIdle {
   0%, 100% {
     transform: translateY(0px) scale(1);
@@ -488,6 +514,14 @@
 
 .animate-character-walk {
   animation: characterWalk 3.2s ease-in-out infinite;
+}
+
+.animate-character-walk-slow {
+  animation: characterWalkSlow 4.2s ease-in-out infinite;
+}
+
+.animate-shadow-walk-slow {
+  animation: shadowWalkSlow 4.2s ease-in-out infinite;
 }
 
 .animate-character-idle {

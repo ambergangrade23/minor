@@ -18,7 +18,7 @@ import { RouteScheduleModal } from './RouteScheduleModal';
 import { ProblemAreasDirectoryModal } from './ProblemAreasDirectoryModal';
 import { LeafletMap } from './LeafletMap';
 import { Bus, Route } from '../types/transit';
-import { Map, X } from 'lucide-react';
+import { Map, X, Maximize2, Minimize2 } from 'lucide-react';
 
 export const FuturisticCampusDashboard: React.FC = () => {
   const { buses, routes, activeBus, setActiveBus, activeRoute, setActiveRoute, shift } = useTransit();
@@ -38,6 +38,7 @@ export const FuturisticCampusDashboard: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState<boolean>(false);
   const [isProblemAreasModalOpen, setIsProblemAreasModalOpen] = useState<boolean>(false);
   const [showFullMap, setShowFullMap] = useState<boolean>(false);
+  const [isMapMaximized, setIsMapMaximized] = useState<boolean>(true);
 
   // Trigger character reaction and return to default walking after short period
   const handleTriggerCharacter = (state: CharacterState, durationMs: number = 3800) => {
@@ -114,7 +115,7 @@ export const FuturisticCampusDashboard: React.FC = () => {
           Renders 3D boy walking and dynamically reacting to user clicks
           ========================================================================= */}
       <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-        <div className="w-full h-full max-w-7xl mx-auto">
+        <div className="w-full h-full max-w-7xl mx-auto flex items-center justify-center">
           <Student3DCanvas
             interactionState={characterState}
             className="w-full h-full"
@@ -240,22 +241,50 @@ export const FuturisticCampusDashboard: React.FC = () => {
 
       {/* Map Drawer Overlay when user requests interactive progression tracking */}
       {showFullMap && (
-        <div className="fixed inset-4 sm:inset-10 z-50 bg-white/95 backdrop-blur-2xl rounded-3xl border border-white/90 shadow-2xl p-4 flex flex-col animate-fade-in">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <Map className="w-5 h-5 text-sky-600" />
-              <h3 className="text-sm font-black uppercase tracking-wider text-[#0f172a]">
-                Interactive Campus Fleet & Route Map
-              </h3>
+        <div
+          className={`fixed z-50 bg-white/95 backdrop-blur-2xl border border-white/90 shadow-2xl flex flex-col flex-grow grow transition-all duration-300 animate-fade-in ${
+            isMapMaximized
+              ? 'inset-0 w-screen h-screen rounded-none p-3 sm:p-4'
+              : 'inset-2 sm:inset-4 md:inset-6 h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] md:h-[calc(100vh-3rem)] rounded-3xl p-3 sm:p-4'
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200/80 flex items-center justify-center text-sky-700 shadow-sm">
+                <Map className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#0f172a]">
+                  Interactive Campus Fleet & Route Map
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                  Live real-time telemetry across college transit corridors
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => setShowFullMap(false)}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsMapMaximized(!isMapMaximized)}
+                className="px-2.5 py-1.5 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold border border-slate-200"
+                title={isMapMaximized ? 'Restore framed window' : 'Expand to 100% screen'}
+              >
+                {isMapMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{isMapMaximized ? 'Restore' : '100% View'}</span>
+              </button>
+              <button
+                onClick={() => setShowFullMap(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                title="Close Map"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 w-full h-full min-h-[420px] rounded-2xl overflow-hidden mt-3 relative">
+
+          {/* Dynamic 100% Flex-Grow Map Canvas Area */}
+          <div className="flex-1 flex-grow grow min-h-0 w-full h-full flex flex-col rounded-2xl overflow-hidden mt-2.5 relative shadow-inner">
             <LeafletMap
               activeBus={activeBus}
               activeRoute={activeRoute}

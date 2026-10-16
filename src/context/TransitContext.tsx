@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import {
   Bus,
   Route,
@@ -67,6 +67,11 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [isSimulating, setSimulating] = useState<boolean>(false);
 
+  const activeBusRef = useRef<Bus | null>(null);
+  useEffect(() => {
+    activeBusRef.current = activeBus;
+  }, [activeBus]);
+
   const refreshData = useCallback(async () => {
     try {
       const [routesRes, busesRes, metricsRes, notifsRes, repRes, hubsRes] = await Promise.all([
@@ -81,7 +86,8 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (routesRes && routesRes.success) setRoutes(routesRes.routes);
       if (busesRes && busesRes.success) {
         setBuses(busesRes.buses);
-        if (!activeBus) {
+        const currentActive = activeBusRef.current;
+        if (!currentActive) {
           const g55 = busesRes.buses.find((b: Bus) => b.bus_number === 'G55') || busesRes.buses[0];
           if (g55) {
             setActiveBus(g55);
@@ -90,9 +96,9 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
           }
         } else {
           // Keep activeBus updated with latest telemetry and assignment status
-          const updated = busesRes.buses.find((b: Bus) => b.id === activeBus.id);
+          const updated = busesRes.buses.find((b: Bus) => b.id === currentActive.id);
           if (updated) {
-            setActiveBus((prev) => (prev ? { ...prev, ...updated } : updated));
+            setActiveBus(updated);
           }
         }
       }
@@ -103,7 +109,7 @@ export const TransitProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err) {
       console.warn('Transit data refresh warning:', err);
     }
-  }, [activeBus]);
+  }, []);
 
   useEffect(() => {
     refreshData();
